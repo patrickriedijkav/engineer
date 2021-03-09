@@ -14,3 +14,20 @@ jobs:
           password: ${{ secrets.DOCKERPW }}
       - run: docker build . -t ${{ secrets.REGISTRY }}/sample:$GITHUB_RUN_NUMBER
       - run: docker push ${{ secrets.REGISTRY }}/sample:$GITHUB_RUN_NUMBER
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.CREDENTIALS }}
+      - name: Run ARM deploy
+        uses: azure/arm-deploy@v1
+        id: deploy
+        with:
+          subscriptionId: ${{ secrets.SUBSCRIPTION }}
+          resourceGroupName: rggithubtest
+          template: ./arm/aci.json
+          parameters: name=test image=${{ secrets.REGISTRY }}/sample:${{ github.run_number }}
+      - run: echo ${{ steps.deploy.outputs.containerIPv4Address }}
